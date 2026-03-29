@@ -1,0 +1,61 @@
+exclude: ^README.*$|^.*\/\.gitmodules$
+
+repos:
+    # Terraform Pre-commit Check
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: check-yaml
+      - id: check-xml
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: destroyed-symlinks
+
+    # Python Linting + Formatting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.15.0
+    hooks:
+      # Run the linter.
+      - id: ruff
+        types_or: [ python, pyi ]
+        args: [ --fix ]
+      # Run the formatter.
+      - id: ruff-format
+        types_or: [ python, pyi ]
+
+  # DockerFile Pre-commit Check
+  - repo: https://github.com/pryorda/dockerfilelint-precommit-hooks
+    rev: v0.1.0
+    hooks:
+      - id: dockerfilelint
+
+  # Workflows Pre-commit Check
+  - repo: https://github.com/sirosen/check-jsonschema
+    rev: 0.28.2
+    hooks:
+      - id: check-github-actions
+      - id: check-github-workflows
+
+    # checks for common spelling mistakes
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.0.0
+    hooks:
+    - id: codespell
+      args: ['--write-changes']
+      exclude: roscompile/data
+
+    # Checks for Shell Scripts
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+    - id: shellcheck
+      args: [--severity=error]

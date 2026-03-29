@@ -1,0 +1,32 @@
+# ROS2 Jazzy Docker Compose Configuration
+# Note: ROS2 does not require a separate roscore/master service
+
+services:
+### -----------NOVNC (GUI Support)----------------- ###
+  novnc:
+    image: theasp/novnc:latest
+    environment:
+      - DISPLAY_WIDTH=1920
+      - DISPLAY_HEIGHT=1080
+    ports:
+      - "8080:8080"
+
+### -----------PACKAGE----------------- ###
+  dv_template_package:
+    depends_on:
+      - novnc
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    network_mode: host
+    #runtime: nvidia
+    environment:
+      - PACKAGE_NAME=dv_template_package
+      - ROS_DOMAIN_ID=0
+      - DISPLAY=novnc:0.0
+    volumes:
+      - ./:/ws/src/dv_template_package
+      - ./fs_msgs:/ws/src/fs_msgs:ro  # read only
+    entrypoint: /ws/src/dv_template_package/docker-entrypoint.sh
+    command: bash -c "source install/setup.bash && ros2 launch dv_template_package launch.py"
