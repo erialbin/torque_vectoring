@@ -17,11 +17,11 @@ class Orchestrator {
           yaw_generator_(std::move(yaw_generator)),
           torque_allocator_(std::move(torque_allocator)) {}
 
-    /// Execute the full pipeline for the given vehicle state.
-    [[nodiscard]] WheelTorques run(const VehicleState& state) {
+    /// Execute the full pipeline for the given vehicle state and driver inputs.
+    [[nodiscard]] WheelTorques run(const VehicleState& state, const SteeringCommand& cmd) {
         const ForceVector forces = force_estimator_.estimateForces(state);
-        const YawMoment moment = yaw_generator_.compute(state, forces);
-        return torque_allocator_.allocate(state, moment);
+        const YawMomentCommand yaw_cmd = yaw_generator_.compute(state, forces, cmd);
+        return torque_allocator_.allocate(state, yaw_cmd, forces);
     }
 
     [[nodiscard]] const F& forceEstimator() const noexcept { return force_estimator_; }

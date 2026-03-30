@@ -12,23 +12,29 @@ concept ForceEstimator = requires(T estimator, const VehicleState& state) {
     { estimator.estimateForcesImpl(state) } -> std::same_as<ForceVector>;
 };
 
-/// Type must provide: YawMoment compute(const VehicleState&, const ForceVector&)
+/// Type must provide: YawMomentCommand computeImpl(const VehicleState&, const ForceVector&, const SteeringCommand&)
 template <typename T>
 concept YawMomentGenerator =
-    requires(T generator, const VehicleState& state, const ForceVector& forces) {
-        { generator.computeImpl(state, forces) } -> std::same_as<YawMoment>;
+    requires(T generator, const VehicleState& state, const ForceVector& forces,
+             const SteeringCommand& cmd) {
+        { generator.computeImpl(state, forces, cmd) } -> std::same_as<YawMomentCommand>;
     };
 
-/// Type must provide: WheelTorques allocate(const VehicleState&, YawMoment)
+/// Type must provide: WheelTorques allocateImpl(const VehicleState&, const YawMomentCommand&, const ForceVector&)
 template <typename T>
-concept TorqueAllocator = requires(T allocator, const VehicleState& state, YawMoment moment) {
-    { allocator.allocate(state, moment) } -> std::same_as<WheelTorques>;
-};
+concept TorqueAllocator =
+    requires(T allocator, const VehicleState& state, const YawMomentCommand& cmd,
+             const ForceVector& forces) {
+        { allocator.allocateImpl(state, cmd, forces) } -> std::same_as<WheelTorques>;
+    };
 
 template <YawMomentGenerator Derived>
 class IYawController {
    public:
-    YawMoment compute(const VehicleState& s) { return static_cast<Derived*>(this)->computeImpl(s); }
+    YawMomentCommand compute(const VehicleState& s, const ForceVector& forces,
+                             const SteeringCommand& cmd) {
+        return static_cast<Derived*>(this)->computeImpl(s, forces, cmd);
+    }
 };
 
 template <ForceEstimator Derived>
@@ -42,9 +48,10 @@ class IForceEstimator {
 template <TorqueAllocator Derived>
 class ITorqueAllocator {
    public:
-    TorqueVector allocateTorque(const YawMoment& yaw) {
-        return static_cast<Derived*>(this)->allocateTorqueImpl(yaw);
+    WheelTorques allocate(const VehicleState& state, const YawMomentCommand& cmd,
+                          const ForceVector& forces) {
+        return static_cast<Derived*>(this)->allocateImpl(state, cmd, forces);
     }
-}
+};
 
 }  // namespace tv

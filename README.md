@@ -106,7 +106,7 @@ You can now interact with the GUI application in your browser for development or
 
 ## Deployment
 
-This section provides step-by-step instructions on how to test and deploy the `dv_template_package` using Docker.
+This section provides step-by-step instructions on how to test and deploy the `torque_vectoring_pkg` using Docker.
 
 ### Prerequisites
 

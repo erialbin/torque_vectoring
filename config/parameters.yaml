@@ -1,4 +1,4 @@
-# Parameters for dv_template_package nodes
+# Parameters for torque_vectoring_pkg nodes
 # This file is loaded by the launch file and passed to the nodes.
 
 # Time Publisher Node Parameters

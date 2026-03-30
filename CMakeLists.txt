@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 
-project(dv_template_package)
+project(torque_vectoring_pkg)
 
 # Default to C++17
 if(NOT CMAKE_CXX_STANDARD)
@@ -16,37 +16,34 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(rclpy REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(OsqpEigen REQUIRED)
 
 # Include directories
 include_directories(include)
 
 # C++ executable
-add_executable(example_time_publisher src/example_time_publisher.cpp)
-ament_target_dependencies(example_time_publisher
+add_executable(torque_vectoring_node src/main.cpp)
+
+ament_target_dependencies(torque_vectoring_node
   rclcpp
   std_msgs
+  sensor_msgs
 )
-target_link_libraries(example_time_publisher Eigen3::Eigen)
+target_link_libraries(torque_vectoring_node Eigen3::Eigen OsqpEigen::OsqpEigen)
 
 # Install C++ executables
 install(TARGETS
-  example_time_publisher
+  torque_vectoring_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
 # Install Python modules (for importable Python code)
-ament_python_install_package(${PROJECT_NAME})
 
 # Install Python executables
-install(PROGRAMS
-  scripts/example_time_subscriber.py
-  DESTINATION lib/${PROJECT_NAME}
-)
 
 # Install launch files
 install(DIRECTORY

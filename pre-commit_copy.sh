@@ -39,14 +39,14 @@ if [ $? -ne 0 ]; then
 fi
 
 echo " Running ament_flake8"
-ament_flake8 scripts/ dv_template_package/
+ament_flake8 scripts/ torque_vectoring_pkg/
 if [ $? -ne 0 ]; then
     echo "ament_flake8 failed"
     exit 1
 fi
 
 echo " Running ament_pep257"
-ament_pep257 scripts/ dv_template_package/
+ament_pep257 scripts/ torque_vectoring_pkg/
 if [ $? -ne 0 ]; then
     echo "ament_pep257 failed"
     exit 1

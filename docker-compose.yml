@@ -12,7 +12,7 @@ services:
       - "8080:8080"
 
 ### -----------PACKAGE----------------- ###
-  dv_template_package:
+  torque_vectoring_pkg:
     depends_on:
       - novnc
     build:
@@ -22,11 +22,11 @@ services:
     network_mode: host
     #runtime: nvidia
     environment:
-      - PACKAGE_NAME=dv_template_package
+      - PACKAGE_NAME=torque_vectoring_pkg
       - ROS_DOMAIN_ID=0
       - DISPLAY=novnc:0.0
     volumes:
-      - ./:/ws/src/dv_template_package
+      - ./:/ws/src/torque_vectoring_pkg
       - ./fs_msgs:/ws/src/fs_msgs:ro  # read only
-    entrypoint: /ws/src/dv_template_package/docker-entrypoint.sh
-    command: bash -c "source install/setup.bash && ros2 launch dv_template_package launch.py"
+    entrypoint: /ws/src/torque_vectoring_pkg/docker-entrypoint.sh
+    command: bash -c "source install/setup.bash && ros2 launch torque_vectoring_pkg launch.py"
