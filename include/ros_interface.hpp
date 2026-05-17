@@ -13,7 +13,8 @@ namespace tv {
 ///
 /// Subscriptions:
 ///   ~/imu/data              sensor_msgs/Imu               — yaw_rate, ax, ay
-///   ~/steering_command      std_msgs/Float64MultiArray[3]  — [steering_angle (rad), vx_ref (m/s), r_ref (rad/s)]
+///   ~/steering_command      std_msgs/Float64MultiArray[3]  — [steering_angle (rad), vx_ref (m/s),
+///   r_ref (rad/s)]
 ///
 /// Publication:
 ///   ~/wheel_torques         std_msgs/Float64MultiArray[4]  — [T_FL, T_FR, T_RL, T_RR] (Nm)
@@ -31,12 +32,11 @@ class ROS : public rclcpp::Node {
                  const std::string& node_name = "torque_vectoring")
         : Node(node_name), orchestrator_(std::move(orchestrator)) {
         imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
-            "imu/data", rclcpp::SensorDataQoS(),
+            "imu", rclcpp::SensorDataQoS(),
             [this](sensor_msgs::msg::Imu::SharedPtr msg) { imuCallback(std::move(msg)); });
 
         steering_sub_ = create_subscription<std_msgs::msg::Float64MultiArray>(
-            "steering_command", 10,
-            [this](std_msgs::msg::Float64MultiArray::SharedPtr msg) {
+            "steering_command", 10, [this](std_msgs::msg::Float64MultiArray::SharedPtr msg) {
                 steeringCallback(std::move(msg));
             });
 
@@ -45,9 +45,9 @@ class ROS : public rclcpp::Node {
 
    private:
     void imuCallback(sensor_msgs::msg::Imu::SharedPtr msg) {
-        state_.yaw_rate_ = msg->angular_velocity.z;     // yaw_rate  [rad/s]
-        state_.ax_       = msg->linear_acceleration.x;  // ax        [m/s²]
-        state_.ay_       = msg->linear_acceleration.y;  // ay        [m/s²]
+        state_.yaw_rate_ = msg->angular_velocity.z;  // yaw_rate  [rad/s]
+        state_.ax_ = msg->linear_acceleration.x;     // ax        [m/s²]
+        state_.ay_ = msg->linear_acceleration.y;     // ay        [m/s²]
 
         const WheelTorques torques = orchestrator_.run(state_, steering_cmd_);
 
@@ -65,9 +65,9 @@ class ROS : public rclcpp::Node {
             return;
         }
         steering_cmd_.steering_angle_ = msg->data[0];  // steering_angle [rad]
-        steering_cmd_.vx_ref_         = msg->data[1];  // vx_ref         [m/s]
-        steering_cmd_.r_ref_          = msg->data[2];  // r_ref          [rad/s]
-        state_.steering_angle_        = msg->data[0];  // mirror into VehicleState
+        steering_cmd_.vx_ref_ = msg->data[1];          // vx_ref         [m/s]
+        steering_cmd_.r_ref_ = msg->data[2];           // r_ref          [rad/s]
+        state_.steering_angle_ = msg->data[0];         // mirror into VehicleState
     }
 
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
@@ -75,7 +75,7 @@ class ROS : public rclcpp::Node {
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr torque_pub_;
 
     Orchestrator<F, Y, A> orchestrator_;
-    VehicleState state_{};        // vx_, vy_, yaw_rate_, steering_angle_, ax_, ay_
+    VehicleState state_{};            // vx_, vy_, yaw_rate_, steering_angle_, ax_, ay_
     SteeringCommand steering_cmd_{};  // steering_angle_, vx_ref_, r_ref_
 };
 
