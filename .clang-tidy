@@ -71,8 +71,6 @@ CheckOptions:
     value: "TAG|IRAM_ATTR"
   - key: readability-identifier-naming.MemberCase
     value: lower_case
-  - key: readability-identifier-naming.MemberSuffix
-    value: "_"
   - key: readability-identifier-naming.ClassConstantCase
     value: lower_case
   - key: readability-identifier-naming.ClassConstantPrefix
