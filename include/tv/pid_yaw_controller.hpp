@@ -15,18 +15,13 @@ namespace tv {
 //
 // SteeringCommand layout: [delta (rad), vx_ref (m/s), r_ref (rad/s)]
 // Call setDt(dt) once per control cycle before computeImpl.
-class SmcYawController : public IYawController<SmcYawController> {
+class PIDYawController : public IYawController<PIDYawController> {
    public:
     // Bicycle model params (yaw moment feedforward):
     //   c_f           front axle cornering stiffness [N/rad]
     //   c_r           rear axle cornering stiffness [N/rad]
     //   l_f           front axle to CG [m]
     //   l_r           rear axle to CG [m]
-    //
-    // SMC (super-twisting) params:
-    //   s_lambda      integral weight in sliding surface σ = e_r + s_lambda·∫e_r dt
-    //   k1            gain on −k1·√|σ|·sign(σ)
-    //   k2            integral gain on −k2·sign(σ)
     //
     // Loss feedforward params:
     //   rho           air density [kg/m³]
@@ -42,9 +37,9 @@ class SmcYawController : public IYawController<SmcYawController> {
     //
     //   Fx_total = (k_p·ev + k_i·∫ev dt) · mass / eta + f_loss
     //   f_loss = f_aero + f_roll  (only when accelerating, zero when braking)
-    SmcYawController(double c_f, double c_r, double l_f, double l_r, double rho, double c_d,
-                     double frontal_area, double c_rr, double s_lambda, double k1, double k2,
-                     double mass, double k_p, double k_i, double eta)
+    PIDYawController(double c_f, double c_r, double l_f, double l_r, double rho, double c_d,
+                     double frontal_area, double c_rr, double kp_yaw, double ki_yaw, double mass,
+                     double k_p, double k_i, double eta)
         : c_f_(c_f),
           c_r_(c_r),
           l_f_(l_f),
@@ -53,12 +48,11 @@ class SmcYawController : public IYawController<SmcYawController> {
           c_d_(c_d),
           frontal_area_(frontal_area),
           c_rr_(c_rr),
-          s_lambda_(s_lambda),
-          k1_(k1),
-          k2_(k2),
+          kp_yaw_(kp_yaw),
+          ki_yaw_(ki_yaw),
           mass_(mass),
-          k_p_(k_p),
-          k_i_(k_i),
+          kp_longi_(k_p),
+          ki_longi_(k_i),
           eta_(eta) {}
 
     // Must be called once per control cycle before computeImpl.
@@ -78,16 +72,7 @@ class SmcYawController : public IYawController<SmcYawController> {
         const double r_ref = cmd.r_ref_;
 
         // -----------------------------------------------------------------------
-        // Yaw moment feedforward — bicycle model steady-state (docs/tv.md §vehicle dynamics)
-        //
-        // Steady-state yaw moment balance at r = r_ref:
-        //   0 = l_f·C_f·α_f − l_r·C_r·α_r + Mz_ff
-        //
-        // Tire slip angles evaluated at the reference yaw rate:
-        //   α_f = δ − (vy + l_f·r_ref) / vx
-        //   α_r = −(vy − l_r·r_ref) / vx
-        //
-        // Solving: Mz_ff = l_r·C_r·α_r − l_f·C_f·α_f
+        // Yaw moment feedforward — bicycle model steady-state
         // -----------------------------------------------------------------------
         double mz_ff = 0.0;
         if (std::abs(vx) > 0.5) {
@@ -96,30 +81,13 @@ class SmcYawController : public IYawController<SmcYawController> {
             mz_ff = ((l_r_ * c_r_) * alpha_r) - ((l_f_ * c_f_) * alpha_f);
         }
 
-        // -----------------------------------------------------------------------
-        // SMC feedback — super-twisting algorithm (docs/tv.md §layer 2)
-        //
-        //   Sliding surface:  σ = e_r + s_lambda·∫e_r dt
-        //   Control law:      u = −k1·√|σ|·sign(σ) + v
-        //                     v̇ = −k2·sign(σ)
-        //
-        // Reference: Goggia, Sorniotti & Ferrara (IEEE TVT, 2015)
-        // -----------------------------------------------------------------------
+        // PID for yaw rate tracking, no D term right now
         const double e_r = r_ref - r;
-        e_r_integral_ += e_r * dt_;
-        const double sigma = e_r + (s_lambda_ * e_r_integral_);
+        e_r_integral_ += e_r * dt_;  // TODO: maybe need some anti windup
 
-        double sgn_sigma = 0.0;
-        if (sigma > 0.0) {
-            sgn_sigma = 1.0;
-        } else if (sigma < 0.0) {
-            sgn_sigma = -1.0;
-        }
+        const double mz_pid = (kp_yaw_ * e_r) + (ki_yaw_ * e_r_integral_);
 
-        const double u_smc = (-k1_ * std::sqrt(std::abs(sigma)) * sgn_sigma) + v_st_;
-        v_st_ += (-k2_ * sgn_sigma) * dt_;
-
-        const double mz = mz_ff + u_smc;
+        const double mz = mz_ff + mz_pid;
 
         // -----------------------------------------------------------------------
         // Fx demand — PI velocity tracker + loss feedforward (TU Munich / KIT FSG approach)
@@ -135,38 +103,38 @@ class SmcYawController : public IYawController<SmcYawController> {
         const double f_aero = (0.5 * rho_ * c_d_ * frontal_area_) * (vx * vx);
         const double f_roll = c_rr_ * mass_ * 9.81;
         const double f_loss = (e_vx > 0.0) ? (f_aero + f_roll) : 0.0;
-        const double fx_total = (((k_p_ * e_vx) + (k_i_ * e_vx_integral_)) * (mass_ / eta_)) + f_loss;
+        const double fx_total =
+            (((kp_longi_ * e_vx) + (ki_longi_ * e_vx_integral_)) * (mass_ / eta_)) +
+            f_loss;  // limiting currently happens in torque allocator
 
         return YawMomentCommand{.mz_ = mz, .fx_total_ = fx_total};
     }
 
    private:
     // Bicycle model parameters (yaw moment feedforward)
-    double c_f_;  // front cornering stiffness [N/rad]
-    double c_r_;  // rear cornering stiffness [N/rad]
-    double l_f_;  // front axle to CG [m]
-    double l_r_;  // rear axle to CG [m]
+    const double c_f_;  // front cornering stiffness [N/rad]
+    const double c_r_;  // rear cornering stiffness [N/rad]
+    const double l_f_;  // front axle to CG [m]
+    const double l_r_;  // rear axle to CG [m]
 
     // Loss feedforward parameters
-    double rho_;           // air density [kg/m³]
-    double c_d_;           // drag coefficient
-    double frontal_area_;  // frontal reference area [m²]
-    double c_rr_;          // rolling resistance coefficient
+    const double rho_;           // air density [kg/m³]
+    const double c_d_;           // drag coefficient
+    const double frontal_area_;  // frontal reference area [m²]
+    const double c_rr_;          // rolling resistance coefficient
 
-    // SMC parameters
-    double s_lambda_;  // sliding surface integral weight
-    double k1_;        // super-twisting gain on sqrt(|sigma|)
-    double k2_;        // super-twisting integral gain on sign(sigma)
+    // PID Yaw parameters
+    const double kp_yaw_;
+    const double ki_yaw_;
 
     // Longitudinal PI parameters
-    double mass_;  // vehicle mass [kg]
-    double k_p_;   // proportional gain [1/s]
-    double k_i_;   // integral gain     [1/s²]
-    double eta_;   // drivetrain efficiency
+    const double mass_;      // vehicle mass [kg]
+    const double kp_longi_;  // proportional gain [1/s]
+    const double ki_longi_;  // integral gain     [1/s²]
+    const double eta_;       // drivetrain efficiency
 
-    // SMC state
+    // Yaw PID state
     double e_r_integral_{0.0};  // integral of yaw rate error [rad]
-    double v_st_{0.0};          // super-twisting integral term [Nm]
 
     // PI state
     double e_vx_integral_{0.0};  // integral of velocity error [m]
