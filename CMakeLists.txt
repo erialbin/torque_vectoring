@@ -21,6 +21,7 @@ find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(OsqpEigen REQUIRED)
+find_package(vehicle_params_cpp REQUIRED)
 
 # Include directories
 include_directories(include)
@@ -33,7 +34,7 @@ ament_target_dependencies(torque_vectoring_node
   std_msgs
   sensor_msgs
 )
-target_link_libraries(torque_vectoring_node Eigen3::Eigen OsqpEigen::OsqpEigen)
+target_link_libraries(torque_vectoring_node Eigen3::Eigen OsqpEigen::OsqpEigen vehicle_params_cpp::vehicle_params_cpp)
 
 # Install C++ executables
 install(TARGETS
